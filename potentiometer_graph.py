@@ -1,39 +1,55 @@
-import serial
 import time
-import matplotlib.pyplot as plt # type: ignore
-import matplotlib.animation as animation # type: ignore
+import serial
+from collections import deque
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtWidgets, QtCore
 
-def animate(i, dataList, ser):
-    arduinoData_string = ser.readline().decode('ascii')# Decode receive Arduino data as a formatted string
-    #print(i)                                           # 'i' is a incrementing variable based upon frames = x argument
+# Initialize serial connection
+ser = serial.Serial('COM8', baudrate=115200, timeout=0.1)
+time.sleep(2)  # Allow time for the serial connection to initialize
+
+# Initialize data deque
+data_deque = deque([0] * 50, maxlen=50)
+
+# Initialize the Qt Application and the window
+app = QtWidgets.QApplication([])
+win = pg.GraphicsLayoutWidget(show=True, title="Real-Time Plotting with PyQtGraph")
+win.resize(800, 600)
+win.setWindowTitle('Arduino Data')
+
+# Create a plot and add it to the window
+plot = win.addPlot(title="Real-Time Data from Arduino")
+curve = plot.plot(pen='y')
+
+# Set plot parameters
+plot.setYRange(0, 5)
+plot.setXRange(0, 50)
+
+# Define a function to update the plot
+def update():
     try:
-        arduinoData_float = float(arduinoData_string)   # Convert to float
-        dataList.append(arduinoData_float)              # Add to the list holding the fixed number of points to animate
-    except:                                             # Pass if data point is bad                               
-        pass
-    
-    dataList = dataList[-50:]                          # Fix the list size so that the animation plot 'window' is x number of points
+        # Read a line of data from the serial port
+        arduinoData_string = ser.readline().decode('ascii').strip()
+        # Convert the data to a float
+        arduinoData_float = float(arduinoData_string)
+        # Append new data to deque
+        data_deque.append(arduinoData_float)
+        print(arduinoData_float)  # Print the data for debugging
 
-    ax.clear()
-    ax.plot(dataList)                                   # Plot new data frame
-    
-    ax.set_ylim([0, 1200])                              # Set Y axis limit of plot
-    #ax.set_xlim([1,50])
-    ax.set_title("Arduino Data")                        # Set title of figure
-    ax.set_ylabel("Voltage (V)")                              # Set title of y axis 
-    ax.set_xlabel("Time (s)")
+    except ValueError:
+        print(f"Invalid data: {arduinoData_string}")  # Print invalid data for debugging
 
-dataList = []                                           # Create empty list variable for later use
-                                                        
-fig = plt.figure()                                      # Create Matplotlib plots fig is the 'higher level' plot window
-ax = fig.add_subplot(111)                               # Add subplot to main fig window
+    # Update the plot
+    curve.setData(data_deque)
 
-ser = serial.Serial("COM8", 9600)                       # Establish Serial object with COM port and BAUD rate to match Arduino Port/rate
-time.sleep(0.0002)                                          # Time delay for Arduino Serial initialization 
+# Use a QTimer to call the update function at regular intervals
+timer = QtCore.QTimer()
+timer.timeout.connect(update)
+timer.start(1)  # Update every 10 milliseconds
 
-                                                        # Matplotlib Animation Fuction that takes takes care of real time plot.
-                                                        # Note that 'fargs' parameter is where we pass in our dataList and Serial object. 
-ani = animation.FuncAnimation(fig, animate, frames=100, fargs=(dataList, ser), interval=0.000001) 
+# Start the Qt event loop
+if __name__ == '__main__':
+    QtWidgets.QApplication.instance().exec_()
 
-plt.show()                                              # Keep Matplotlib plot persistent on screen until it is closed
+# Close the serial connection when done
 ser.close()
