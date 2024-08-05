@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
 
     self.setCentralWidget(button)
 
-    self.setFixedSize(QSize(1200,800))
+    self.setFixedSize(QSize(1000,800))
 app = QApplication(sys.argv)
 
 window = MainWindow()
