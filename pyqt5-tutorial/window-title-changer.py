@@ -44,7 +44,6 @@ class MainWindow(QMainWindow):
         if window_title == 'Something went wrong':
             self.button.setDisabled(True)
 
-
 app = QApplication(sys.argv)
 
 window = MainWindow()
